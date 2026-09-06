@@ -1,0 +1,19 @@
+.env.local
+
+# Experiment output
+logs/runs/
+
+# Generated Python files
+__pycache__/
+*.py[cod]
+
+# Local runtimes and tool caches
+.venv/
+node_modules/
+.ruff_cache/
+.pytest_cache/
+.podman-storage/
+
+# OS and editor files
+.DS_Store
+*.swp

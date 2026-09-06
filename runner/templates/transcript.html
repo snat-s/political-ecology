@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Political ecology transcript</title>
+    <style>
+      :root {
+        --bg: #f6f6f3;
+        --ink: #20231f;
+        --muted: #747a73;
+        --line: #dadcd6;
+        --card: #fff;
+        --bad: #a43d34;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.45 system-ui,
+          sans-serif;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        background: #f6f6f3ef;
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+      .head,
+      main {
+        max-width: 1240px;
+        margin: auto;
+        padding: 14px 20px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0;
+      }
+      .meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 9px;
+      }
+      button,
+      input {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 99px;
+        padding: 5px 10px;
+      }
+      button.active {
+        background: #252925;
+        color: #fff;
+      }
+      input {
+        flex: 1;
+        min-width: 190px;
+      }
+      .labels,
+      .event {
+        display: grid;
+        grid-template-columns: 86px 330px minmax(360px, 1fr);
+        gap: 12px;
+      }
+      .labels {
+        position: sticky;
+        top: 105px;
+        z-index: 2;
+        background: var(--bg);
+        padding: 5px 0 7px;
+        margin-bottom: 5px;
+        border-bottom: 1px solid var(--line);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .event {
+        align-items: start;
+        margin: 0 0 5px;
+        min-height: 29px;
+      }
+      .identity {
+        text-align: right;
+        font-weight: 750;
+        padding-top: 5px;
+      }
+      .identity small {
+        display: block;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .post {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--agent);
+        border-radius: 4px 13px 13px;
+        padding: 8px 11px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .post.final {
+        background: #fff8de;
+      }
+      .private {
+        position: relative;
+      }
+      .action {
+        background: #e9ebe6;
+        border-left: 3px solid var(--agent);
+        border-radius: 4px;
+        padding: 4px 7px;
+        font-size: 11px;
+      }
+      .action summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      .action summary::-webkit-details-marker {
+        display: none;
+      }
+      .bad {
+        color: var(--bad);
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #292d29;
+        color: #eef1ec;
+        border-radius: 5px;
+        padding: 7px;
+        max-height: 180px;
+        overflow: auto;
+        font: 10px/1.4 monospace;
+      }
+      .badge {
+        display: inline-block;
+        background: #dedfd9;
+        border-radius: 4px;
+        padding: 2px 5px;
+        font: 9px monospace;
+        margin-bottom: 5px;
+      }
+      .nothing {
+        text-align: center;
+        color: var(--muted);
+        padding: 50px;
+      }
+      .public-empty {
+        height: 1px;
+      }
+      @media (max-width: 850px) {
+        .labels,
+        .event {
+          grid-template-columns: 72px minmax(220px, 1fr) minmax(260px, 1.4fr);
+        }
+      }
+      @media (max-width: 650px) {
+        .labels {
+          display: none;
+        }
+        .event {
+          grid-template-columns: 68px 1fr;
+        }
+        .public,
+        .private {
+          grid-column: 2;
+        }
+        .identity {
+          grid-row: 1 / span 2;
+        }
+        .private:empty {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="head">
+        <h1>Political ecology · chronological group conversation</h1>
+        <div class="meta" id="meta"></div>
+        <div class="controls" id="controls"></div>
+      </div>
+    </header>
+    <main>
+      <div class="labels">
+        <span>agent / time</span><span>private actions</span
+        ><span>shared.txt · public thread</span>
+      </div>
+      <div id="feed"></div>
+    </main>
+    <script>
+      const DATA = __DATA__,
+        COLORS = [
+          '#28785c',
+          '#b66d22',
+          '#b4473d',
+          '#39779b',
+          '#765b96',
+          '#9b7d28',
+        ];
+      const esc = s =>
+          String(s ?? '').replace(
+            /[&<>"']/g,
+            c =>
+              ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+              })[c],
+          ),
+        color = a => COLORS[DATA.agents.indexOf(a) % COLORS.length],
+        fmt = x => JSON.stringify(x ?? {}, null, 2);
+      let selected = new Set(DATA.agents),
+        query = '';
+      function thread() {
+        return DATA.events
+          .filter(e => e.kind === 'tool' || (e.kind === 'message' && e.text))
+          .sort((a, b) => a.time - b.time || a.sequence - b.sequence);
+      }
+      function summary(e) {
+        if (e.tool === 'read') return 'read ' + (e.args.path || 'file');
+        if (e.tool === 'write')
+          return e.public
+            ? 'posted to group'
+            : 'wrote ' + (e.args.path || 'file');
+        if (e.tool === 'count_tokens') return 'balance → ' + (e.result ?? '?');
+        if (e.tool === 'get_tokens')
+          return `requested ${Number(e.args.amount || 0).toLocaleString()} from ${e.args.source || 'common-pool'} → ${e.error ? 'failed' : e.result}`;
+        return e.tool;
+      }
+      function action(e) {
+        return `<details class="action"><summary class="${e.error ? 'bad' : ''}">${esc(summary(e))}</summary><pre>${esc(fmt(e.args))}
+
+${esc(e.result ?? 'No result captured')}</pre></details>`;
+      }
+      function card(e) {
+        const isFinal = e.kind === 'message' && e.final;
+        const privatePart =
+          e.kind === 'tool'
+            ? action(e)
+            : !isFinal
+              ? `<details class="action" open><summary>response to harness</summary><pre>${esc(e.text)}</pre></details>`
+              : '';
+        const publicPart = e.public
+          ? `<div class="post">${esc(e.public)}</div>`
+          : isFinal
+            ? `<div class="post final"><span class="badge">FINAL RESPONSE TO HARNESS</span>
+${esc(e.text)}</div>`
+            : '<div class="public-empty"></div>';
+        return `<section class="event" style="--agent:${color(e.agent)}"><div class="identity">${e.agent}<small>${e.time.toFixed(1)}s · turn ${e.turn}</small></div><aside class="private">${privatePart}</aside><div class="public">${publicPart}</div></section>`;
+      }
+      const meta = document.querySelector('#meta'),
+        controls = document.querySelector('#controls'),
+        feed = document.querySelector('#feed');
+      meta.textContent = `${DATA.run} · ${DATA.manifest.model} · shared.txt in posting order`;
+      controls.innerHTML =
+        DATA.agents
+          .map(a => `<button class="active" data-agent="${a}">${a}</button>`)
+          .join('') +
+        '<input id="search" placeholder="Search conversation and actions">';
+      controls.onclick = e => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        selected.has(b.dataset.agent)
+          ? selected.delete(b.dataset.agent)
+          : selected.add(b.dataset.agent);
+        b.classList.toggle('active');
+        draw();
+      };
+      document.querySelector('#search').oninput = e => {
+        query = e.target.value.toLowerCase();
+        draw();
+      };
+      function draw() {
+        const xs = thread().filter(
+          g =>
+            selected.has(g.agent) &&
+            (!query || JSON.stringify(g).toLowerCase().includes(query)),
+        );
+        feed.innerHTML = xs.length
+          ? xs.map(card).join('')
+          : '<div class="nothing">No matching board posts.</div>';
+      }
+      draw();
+    </script>
+  </body>
+</html>
