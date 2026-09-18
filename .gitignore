@@ -17,3 +17,4 @@ node_modules/
 # OS and editor files
 .DS_Store
 *.swp
+/.agents/skills/modal/
